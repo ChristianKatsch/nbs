@@ -1,0 +1,137 @@
+version: '3.3'
+
+
+services:
+
+################################################################################
+# real implemented and used services
+################################################################################
+  nfs:
+    environment:
+    - KEEP_SERVICE_RUNNING=yes
+    tty: true
+    container_name: ${NBS_PROJECT}_nfs
+    hostname: nfs
+    image: ${NBS_PROJECT}_nfs:${VERSION:-latest}
+    build:
+        context: ./nfs
+        args:
+            - VERSION=${VERSION:-latest}
+    depends_on:
+      - home0
+    privileged: true
+    cap_add: [ 'NET_ADMIN', 'NET_RAW' ]
+    ports:
+      - 111:111
+      - 2049:2049
+    expose:
+      - '111'
+      - '2049'
+      - 69/udp
+    volumes:
+      - ~/.tftpboot:/tftpboot
+      - ~/nfs:/media/nfs
+    networks:
+      home0:
+
+################################################################################
+# gateways
+################################################################################
+
+  home0:
+    environment:
+    - KEEP_SERVICE_RUNNING=yes
+    - UPSTREAM_NETWORK_NAME=internet
+    - UPSTREAM_GATEWAY_NAME=upstream
+    # allowed range is 1-250 to generate addresses in 192.168.IP_ADDRES_BYTE_TO_SERVE.
+    - IP_ADDRES_BYTE_TO_SERVE=${HOME0_IP_ADDRES_BYTE:-1}
+    - IP_ADDRES_BYTE_RANGE_START=${HOME0_IP_ADDRES_START:-101}
+    - IP_ADDRES_BYTE_RANGE_END=${HOME0_IP_ADDRES_END:-110}
+    - OWN_IP_ADDRES_BYTE=${HOME0_OWN_IP_ADDRES_BYTE:-100}
+    - DEFAULT_LEASE_TIME=${HOME0_DEFAULT_LEASE_TIME:-86400}
+    - DOMAIN_TO_SERVE=home0.intern
+    - USE_OPTION_125_WORKAROUND=${PATCH_MY_DHCP_SERVER_FOR_OPTION_125_WORKAROUND:-no}
+    - USE_OPTION_43_WORKAROUND=${PATCH_MY_DHCP_SERVER_FOR_OPTION_43_WORKAROUND:-no}
+    - USE_OPTION_125_MODE=${USE_OPTION_125_MODE:-BBF}
+    - USE_OPTION_43_MODE=${USE_OPTION_43_MODE:-none}
+    - ACS_URL_TO_USE_OPTION125=${ACS_URL_TO_USE_OPTION125:-http://telco0.public:9000/openacs/acs}
+    - ACS_URL_TO_USE_OPTION43=${ACS_URL_TO_USE_OPTION43:-http://telco0.public:7547}
+    - PROVISIONING_CODE=${PROVISIONING_CODE:-code12345}
+    - WAIT_INTERVAL=${WAIT_INTERVAL:-86400}
+    - WAIT_INTERVAL_MULTIPLIER=${WAIT_INTERVAL_MULTIPLIER:-1}
+
+    tty: true
+    container_name: ${NBS_PROJECT}_home0
+    hostname: home0
+    image: ${NBS_PROJECT}_home0:${VERSION:-latest}
+    build:
+        context: ./home0
+        args:
+            - VERSION=${VERSION:-latest}
+    privileged: true
+    cap_add: [ 'NET_ADMIN', 'NET_RAW' ]
+    security_opt:
+      - apparmor:docker-default
+    depends_on:
+      - upstream
+    expose:
+      - 53
+      - 53/udp
+      - 67/udp
+      - 68/udp
+    volumes:
+      - ~/.tftpboot:/tftpboot
+    networks:
+      internet:
+      home0:
+
+# To connect the internetworking network to the upstream 'internet'
+  upstream:
+    environment:
+    - KEEP_SERVICE_RUNNING=yes
+    - UPSTREAM_NETWORK_NAME=localupstream
+    # allowed range is 1-250 to generate addresses in 192.168.IP_ADDRES_BYTE_TO_SERVE.
+    - IP_ADDRES_BYTE_TO_SERVE=${UPSTREAM_IP_ADDRES_BYTE:-3}
+    - OWN_IP_ADDRES_BYTE=${UPSTREAM_OWN_IP_ADDRES_BYTE:-1}
+    - DEFAULT_LEASE_TIME=${UPSTREAM_DEFAULT_LEASE_TIME:-600}
+    - DHCLIENT_TIMEOUT=60
+    - DOMAIN_TO_SERVE=public
+    - ADDITIONAL_NAMESERVER=${UPSTREAM_ADDITIONAL_NAMESERVER}
+    tty: true
+    container_name: ${NBS_PROJECT}_upstream
+    hostname: upstream
+    image: ${NBS_PROJECT}_upstream:${VERSION:-latest}
+    build:
+        context: ./upstream
+        args:
+            - VERSION=${VERSION:-latest}
+    privileged: true
+    cap_add: [ 'NET_ADMIN', 'NET_RAW' ]
+    security_opt:
+      - apparmor:docker-default
+    depends_on:
+      - gateway
+    expose:
+      - 53
+      - 53/udp
+      - 67/udp
+      - 68/udp
+    networks:
+      internet:
+      upstream:
+
+
+#
+################################################################################
+#
+
+networks:
+  home0:
+    driver: macvlan
+    driver_opts:
+      parent: ${MY_DUT_INTERFACE}
+  upstream:
+    driver: macvlan
+    driver_opts:
+      parent: ${MY_UPSTREAM_INTERFACE}
+
