@@ -7,6 +7,11 @@ iptables -I INPUT 1 -p udp --dport 1900 -j ACCEPT
 iptables -I INPUT 1 -p tcp --dport 6000 -j ACCEPT
 # Accept connections to the TFTP server
 iptables -I INPUT 1 -p udp --dport 69   -j ACCEPT
+# Accept connections to the iperf3 server
+iptables -I INPUT 1 -p tcp --dport 5201 -j ACCEPT
+iptables -I INPUT 1 -p tcp --dport 5001 -j ACCEPT
+iptables -I INPUT 1 -p udp --dport 5201 -j ACCEPT
+iptables -I INPUT 1 -p udp --dport 5001 -j ACCEPT
 # Allow forwarding from local interface to external interface
 sed -i "s/LOCAL_INTERFACE/${LOCAL_INTERFACE}/g" /etc/default/miniupnpd
 sed -i "s/INTERNET_INTERFACE/${INTERNET_INTERFACE}/g" /etc/default/miniupnpd

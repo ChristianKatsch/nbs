@@ -40,6 +40,9 @@ COPY inserts/tr064/mockserver/* /opt/
 COPY inserts/tr064/ssdp-mocks/* /opt/
 ############# TR-064 ###############
 
+RUN apt-get update && apt-get -y upgrade &&  apt-get -y install \
+	iperf3;
+
 COPY inserts/bin/* /docker-entrypoint.d/
 
 ENTRYPOINT ["docker-entrypoint.sh"]
