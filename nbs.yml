@@ -64,8 +64,6 @@ services:
     cap_add: [ 'NET_ADMIN', 'NET_RAW' ]
     security_opt:
       - apparmor:docker-default
-    depends_on:
-      - upstream
     expose:
       - 514
       - 514/udp
